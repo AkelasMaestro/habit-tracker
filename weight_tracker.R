@@ -1,86 +1,106 @@
-# functions.R
-# Holds helper functions for the targets pipeline
-library(ggplot2)
-library(tidyverse)
+## load the required libraries. ######################################
 
-calc_min_weight <- function(height_in) {
-  # Calculate minimum healthy weight based on height in inches
-  min_bmi <- 18.5
-  min_weight <- (min_bmi * (height_in ^ 2)) / 703
-  return(min_weight)
-}
+library(ggplot2) # makes the plots
+library(tidyverse) # handles the data manipulation
 
-calc_max_weight <- function(height_in) {
-  # Calculate maximum healthy weight based on height in inches
-  max_bmi <- 24.9
-  max_weight <- (max_bmi * (height_in ^ 2)) / 703
-  return(max_weight)
-}
+## Define variables ##################################################
 
-plot_weight <- function(
-  title, weight_data, min_weight, max_weight, goals, weeks = 12) {
+start_date <- as.Date("2026-02-08")
+weeks <- 12 # represents the number of weeks we want to plot
+min_bmi <- 18.5
+max_bmi <- 24.9
+
+## get a list of all the file paths ##################################
+
+csv_files <- list.files(data, pattern = "*.csv", full.names = TRUE)
+
+## Process each file found in data ###################################
+# This is where the main logic is handled.
+# The walk() iterates through file path listed in csv_files and then
+# applies the function process_and_plot to each of those files.
+
+walk(csv_files, process_and_plot(file_path) {
+  # read the individual's csv file into a tibble.
+  data <- read_csv(file_path)
   
+  # extract name, height, and weekly goal from the file name
+  file_name <- basename(file_path)
+  name_height_goal <- str_match(file_name, "(.*?)_(\\d+)_(\\d+\\.\\d+)\\.csv")
+  name <- name_height_goal[2]
+  height <- as.integer(name_height_goal[3])
+  goal <- as.numeric(name_height_goal[4])
+
+  # Calculate minimum healthy weight based on height in inches
+  min_weight <- (min_bmi * (height ^ 2)) / 703
+
+  # Calculate maximum healthy weight based on heigh in inches
+  max_weight <- (max_bmi * (height ^ 2)) / 703
+
   # make sure date column is Date type
-  weight_data$date <- as.Date(weight_data$date)
+  data$date <- as.Date(data$date)
 
-  # Validate goals input and print errors as appropriate
-  if (missing(goals) || is.null(goals)) {
-    stop("`goals` is required: supply (start_date, start_weight, weekly_change).")
-  }
-  if (!(is.list(goals) || is.vector(goals)) || length(goals) < 3) {
-    stop("`goals` must be a list/vector: (start_date, start_weight, weekly_change).")
-  }
-
-  # Extract goal parameters
-  start_date <- as.Date(goals[[1]])
-  start_weight <- as.numeric(goals[[2]])
-  weekly_change <- as.numeric(goals[[3]])
-
-  # Create end date and end goal weight for trend line
+  # Create start and end points for goal line
+  # start_date is already defined
+  start_weight <- date %>% filter(date == start_date) %>% pull(weight)
   end_date <- start_date + weeks * 7
-  end_weight <- start_weight + weekly_change * weeks
+  end_weight <- start_weight + goal * weeks
 
-  # Create trend line data frame
+  # Create trend line data frame so we can plot the goal line easier
   trend_data <- tibble(
     date = as.Date(c(start_date, end_date)),
     weight = c(start_weight, end_weight)
   )
-
 
   # Define average weight for buffer zones
   average <- (min_weight + max_weight) / 2
   up_buffer <- average + (max_weight - average) / 2
   low_buffer <- average - (average - min_weight) / 2
 
-  # shaded bands using geom_rect (no warnings from inherit.aes)
+  # Start creating the plot
   p <- ggplot(weight_data, aes(x = date, y = weight)) +
     # Add shaded bands for weight zones
+    # red shading for under weight
     annotate("rect", xmin = -Inf, xmax = Inf,
              ymin = -Inf, ymax = min_weight,
              fill = "red", alpha = 0.12) +
+    # orange shading for lower 25% 
     annotate("rect", xmin = -Inf, xmax = Inf,
              ymin = min_weight, ymax = low_buffer,
              fill = "orange", alpha = 0.12) +
+    # Green shading for middle 50%
     annotate("rect", xmin = -Inf, xmax = Inf,
-             ymin = low_buffer, ymax = average,
+             ymin = low_buffer, ymax = up_buffer,
              fill = "green", alpha = 0.08) +
-    annotate("rect", xmin = -Inf, xmax = Inf,
-             ymin = average, ymax = up_buffer,
-             fill = "green", alpha = 0.08) +
-    annotate("rect", xmin = -Inf, xmax = Inf,
+    # Orange shading for upper 25%
+        annotate("rect", xmin = -Inf, xmax = Inf,
              ymin = up_buffer, ymax = max_weight,
              fill = "orange", alpha = 0.12) +
+    # Red shading for overweight
     annotate("rect", xmin = -Inf, xmax = Inf,
              ymin = max_weight, ymax = Inf,
              fill = "red", alpha = 0.12) +
-    # actual weight line
+    # add a line for individual's weight data
     geom_line(color = "blue") +
-    # goal trend line
+    # add a line for goal data. It's a straight line since
+    # we only defined two points for the start and end.
     geom_line(data = trend_data, aes(x = date, y = weight),
               color = "orange", linetype = "dashed") +
     # axis labels, title, theme
-    labs(title = title, x = "Date", y = "Weight (lbs)") +
+    labs(title = name, x = "Date", y = "Weight (lbs)") +
     theme_minimal()
 
-  p
-}
+  # Save the plot to the output folder
+  # name the file "{start_date}_{name}" 
+  ggsave(
+    filename = paste0(start_date, "_", name,".png"),
+    plot = p,
+    path = output,
+    width = 6,
+    height = 4,
+    units = "in"
+  )
+} # end of the process_and_plot() function inside of walk
+) # end of walk() function
+
+
+
