@@ -13,7 +13,7 @@ I use it to help my wife visualize her progress and keep us accountable to each 
   - {weekly weight change} is a double. Negative for weight loss, positive for weight gain. Leave out to not plot a goal line.
   - The first column 'date' has format "yyyy-mm-dd".
   - The second column ' weight' is a dbl value representing weight in pounds.
-2. Run the R script by running 'tar_make()' in an R console.
+2. Run the R script.
 3. Check the output folder. The resultant plots end up there.
 
 ## Features
