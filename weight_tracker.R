@@ -12,15 +12,17 @@ max_bmi <- 24.9
 
 ## get a list of all the file paths ##################################
 
-csv_files <- list.files(data, pattern = "*.csv", full.names = TRUE)
+csv_files <- list.files("data", pattern = "*.csv", full.names = TRUE)
 
 ## Process each file found in data ###################################
 # This is where the main logic is handled.
-# The walk() iterates through file path listed in csv_files and then
-# applies the function process_and_plot to each of those files.
+# First we define the function process_and_plot(). This is where most
+# of the logic is handled.
+# Then, walk() iterates through file path listed in csv_files and then
+# applies process_and_plot() to each file found in the data folder.
 
-walk(csv_files, process_and_plot(file_path) {
-  # read the individual's csv file into a tibble.
+process_and_plot <- function(file_path) {  
+# read the individual's csv file into a tibble.
   data <- read_csv(file_path)
   
   # extract name, height, and weekly goal from the file name
@@ -99,8 +101,8 @@ walk(csv_files, process_and_plot(file_path) {
     height = 4,
     units = "in"
   )
-} # end of the process_and_plot() function inside of walk
-) # end of walk() function
+} # end of the process_and_plot() function
 
-
-
+# walk through each file_path listed in csv_files, and
+# pass the file_path to process_and_plot().
+walk(csv_files, process_and_plot)
