@@ -18,7 +18,6 @@ I use it to help my wife visualize her progress and keep us accountable to each 
 
 ## Features
 - Iterates through every csv file in the data folder.
-- Runs using the targets package. Only CSV's that have been updated will be run again.
 - Calculates and colors a recommended weight range based off BMI.
   - BMI is NOT a great indicator of health, but it's a starting place.
   - The minimum BMI value is 18.5 and the max is 23.9.
